@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-CAM Live Stream</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+    }
+    header {
+      background-color: #470d31;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    main {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: calc(100vh - 80px);
+      flex-direction: column;
+    }
+    .video-container {
+      width: 90%;
+      max-width: 800px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      text-align: center;
+      padding: 20px;
+    }
+    video {
+      width: 100%;
+      max-height: 450px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+    }
+    button {
+      background-color: #470d31;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #8c3663;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ESP32-CAM Live Stream Viewer</h1>
+  </header>
+  <main>
+    <div class="video-container">
+      <h2>Flux vidéo en direct</h2>
+      <button id="startStream">Démarrer Stream</button>
+      <button id="stopStream">Arrêter Stream</button>
+      <video id="videoStream" autoplay></video>
+    </div>
+  </main>
+
+  <script>
+        const socket = io('wss://ikrame-s-websocket-server.glitch.me');
+        const peerConnection = new RTCPeerConnection();
+        const videoElement = document.getElementById('videoStream');
+
+        // Enregistrement comme client web
+        socket.emit('register-web');
+
+        // Boutons de contrôle
+        document.getElementById('startStream').addEventListener('click', () => {
+            socket.emit('start-stream');
+        });
+
+        document.getElementById('stopStream').addEventListener('click', () => {
+            socket.emit('stop-stream');
+        });
+
+        // Gestion des événements WebRTC
+        socket.on('webrtc-offer', async (offer) => {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            socket.emit('webrtc-answer', answer);
+        });
+
+        socket.on('webrtc-ice-candidate', async (candidate) => {
+     
+       await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        });
+
+        peerConnection.ontrack = (event) => {
+            videoElement.srcObject = event.streams[0];
+        };
+  </script>
+  
+</body>
+</html>
